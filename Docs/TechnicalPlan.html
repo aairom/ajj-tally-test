@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AJJ-Tally — Technical Plan</title>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f5f6fa;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    /* ─── Layout ────────────────────────────────────────────── */
+    .wrapper { display: flex; min-height: 100vh; }
+
+    /* ─── Sidebar ───────────────────────────────────────────── */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: #1a1a2e;
+      color: #e2e8f0;
+      padding: 2rem 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .sidebar-brand {
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid #2d2d4e;
+    }
+    .sidebar-brand h1 { font-size: 1.1rem; color: #63b3ed; font-weight: 700; }
+    .sidebar-brand p { font-size: 0.75rem; color: #718096; margin-top: 0.25rem; }
+    .sidebar nav { padding: 1rem 0; }
+    .nav-section { padding: 0.5rem 1.5rem 0.25rem; font-size: 0.65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: #4a5568; }
+    .sidebar nav a {
+      display: block;
+      padding: 0.45rem 1.5rem;
+      color: #a0aec0;
+      text-decoration: none;
+      font-size: 0.85rem;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    .sidebar nav a:hover {
+      color: #63b3ed;
+      background: rgba(99,179,237,0.08);
+      border-left-color: #63b3ed;
+    }
+
+    /* ─── Main Content ──────────────────────────────────────── */
+    .main { flex: 1; padding: 3rem 2.5rem; max-width: 960px; }
+
+    /* ─── Typography ────────────────────────────────────────── */
+    h1.page-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle { color: #718096; font-size: 1rem; margin-bottom: 2.5rem; }
+    h2.section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-top: 3rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-top: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+    h4 { font-size: 0.95rem; font-weight: 700; color: #4a5568; margin-top: 1.25rem; margin-bottom: 0.35rem; }
+    p { margin-bottom: 0.85rem; color: #2d3748; }
+
+    /* ─── Cards ─────────────────────────────────────────────── */
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      border: 1px solid #e2e8f0;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-sm {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-sm h4 { margin-top: 0; color: #2b6cb0; }
+    .card-sm p { font-size: 0.875rem; margin: 0; color: #4a5568; }
+
+    /* ─── Badges ────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-blue   { background: #bee3f8; color: #2b6cb0; }
+    .badge-green  { background: #c6f6d5; color: #276749; }
+    .badge-purple { background: #e9d8fd; color: #553c9a; }
+    .badge-orange { background: #feebc8; color: #9c4221; }
+
+    /* ─── Score Cards ───────────────────────────────────────── */
+    .score-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin: 1.25rem 0; }
+    .score-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.1rem;
+      text-align: center;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .score-card.winner { border-color: #3182ce; background: #ebf8ff; }
+    .score-label { font-size: 0.75rem; color: #718096; font-weight: 700; text-transform: uppercase; }
+    .score-value { font-size: 2rem; font-weight: 800; color: #1a1a2e; line-height: 1.1; margin: 0.35rem 0; }
+    .score-card.winner .score-value { color: #2b6cb0; }
+    .score-sub { font-size: 0.75rem; color: #718096; }
+
+    /* ─── Tables ────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    thead { background: #edf2f7; }
+    th { padding: 0.65rem 0.9rem; text-align: left; font-weight: 700;
+         color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 0.55rem 0.9rem; border-bottom: 1px solid #f0f0f5; color: #2d3748; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fafbff; }
+    td.highlight { font-weight: 700; color: #2b6cb0; }
+
+    /* ─── Code Blocks ───────────────────────────────────────── */
+    pre {
+      background: #1a1a2e;
+      color: #e2e8f0;
+      padding: 1.25rem 1.5rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.825rem;
+      line-height: 1.6;
+      margin-bottom: 1.25rem;
+      white-space: pre;
+    }
+    code { font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace; }
+    p code, li code {
+      background: #edf2f7;
+      color: #c53030;
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-size: 0.875em;
+    }
+
+    /* ─── Lists ─────────────────────────────────────────────── */
+    ul, ol { padding-left: 1.5rem; margin-bottom: 0.85rem; }
+    li { margin-bottom: 0.3rem; color: #2d3748; }
+
+    /* ─── Phase Cards ───────────────────────────────────────── */
+    .phase {
+      border-left: 4px solid;
+      border-radius: 0 10px 10px 0;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .phase-1 { border-color: #3182ce; }
+    .phase-2 { border-color: #805ad5; }
+    .phase-3 { border-color: #d69e2e; }
+    .phase-4 { border-color: #38a169; }
+    .phase-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.5rem; }
+    .phase-1 .phase-title { color: #2b6cb0; }
+    .phase-2 .phase-title { color: #6b46c1; }
+    .phase-3 .phase-title { color: #b7791f; }
+    .phase-4 .phase-title { color: #276749; }
+    .deliverables-list { margin-top: 0.5rem; }
+    .deliverables-list li { font-size: 0.875rem; }
+
+    /* ─── Architecture Box ──────────────────────────────────── */
+    .arch-box {
+      background: #1a1a2e;
+      color: #a0f0a0;
+      border-radius: 10px;
+      padding: 1.5rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      white-space: pre;
+    }
+
+    /* ─── Folder Tree ───────────────────────────────────────── */
+    .tree {
+      background: #1a1a2e;
+      color: #90cdf4;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      line-height: 1.9;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      white-space: pre;
+    }
+    .tree .folder { color: #63b3ed; }
+    .tree .file   { color: #a0f0a0; }
+    .tree .comment { color: #718096; }
+
+    /* ─── Embed Example Box ─────────────────────────────────── */
+    .embed-example {
+      background: #fff;
+      border: 1px solid #bee3f8;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .embed-example h4 { color: #2b6cb0; margin-top: 0; }
+
+    /* ─── Responsive ────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { padding: 2rem 1.25rem; }
+      .score-grid { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>AJJ-Tally</h1>
+      <p>Technical Plan — Custom Form Solution</p>
+    </div>
+    <nav>
+      <div class="nav-section">Overview</div>
+      <a href="#overview">Project Overview</a>
+      <div class="nav-section">Research</div>
+      <a href="#audit">1. Tally.so Feature Audit</a>
+      <div class="nav-section">Evaluation</div>
+      <a href="#stack">2. Stack Evaluation</a>
+      <a href="#recommendation">3. Recommendation</a>
+      <div class="nav-section">Design</div>
+      <a href="#architecture">4. Architecture</a>
+      <a href="#security">Security</a>
+      <div class="nav-section">Planning</div>
+      <a href="#roadmap">5. Implementation Roadmap</a>
+      <a href="#structure">6. Project Structure</a>
+      <a href="#embedding">7. Embedding Spec</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- PAGE TITLE -->
+    <h1 class="page-title">Custom Self-Hosted Form Solution</h1>
+    <p class="subtitle">
+      Technical plan for replacing Tally.so with a fully owned, embeddable, self-hosted form platform.
+      &nbsp;<span class="badge badge-blue">Planning Phase</span>
+    </p>
+
+    <!-- ══════════════════ OVERVIEW ══════════════════ -->
+    <section id="overview">
+      <h2 class="section-title">Project Overview</h2>
+      <p>
+        <strong>AJJ-Tally</strong> is a custom, self-hosted form solution replacing Tally.so.
+        The core requirement is <strong>embeddability</strong>: a developer on any host website adds a single
+        <code>&lt;script&gt;</code> tag and a <code>&lt;ajj-form&gt;</code> custom element, and a fully
+        featured form renders inline, as a popup, or full-page — with no third-party SaaS dependency.
+      </p>
+      <div class="card-grid">
+        <div class="card-sm"><h4>Embed Runtime</h4><p>Vue 3 Web Component — single IIFE bundle. Shadow DOM isolates the form from the host page.</p></div>
+        <div class="card-sm"><h4>Backend API</h4><p>Node.js + PostgreSQL — serves form schemas, persists submissions, sends email, dispatches webhooks.</p></div>
+        <div class="card-sm"><h4>20+ Field Types</h4><p>Full feature parity with Tally.so: text, choices, date, rating, file upload, signature, and more.</p></div>
+        <div class="card-sm"><h4>Conditional Logic</h4><p>All six action types with AND/OR condition groups. No limits on rule count.</p></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ FEATURE AUDIT ══════════════════ -->
+    <section id="audit">
+      <h2 class="section-title">1. Tally.so Feature Audit</h2>
+      <p>All features documented from Tally's public help pages. This table is the requirements baseline for the custom solution.</p>
+
+      <h3>1.1 Field Types</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Category</th><th>Field Type</th><th>Key Config Options</th></tr></thead>
+          <tbody>
+            <tr><td>Text</td><td>Short answer</td><td>Required, default value, placeholder</td></tr>
+            <tr><td>Text</td><td>Long answer</td><td>Required, default value, placeholder</td></tr>
+            <tr><td>Text</td><td>Number</td><td>Min, max, decimal places, prefix/suffix</td></tr>
+            <tr><td>Contact</td><td>Email</td><td>Required, default value</td></tr>
+            <tr><td>Contact</td><td>Phone number</td><td>Required, country code</td></tr>
+            <tr><td>Contact</td><td>Link / URL</td><td>Required</td></tr>
+            <tr><td>Contact</td><td>Electronic signature</td><td>Required (canvas-based)</td></tr>
+            <tr><td>Choice</td><td>Multiple choice</td><td>Single/multi-select, randomise, images on options</td></tr>
+            <tr><td>Choice</td><td>Dropdown</td><td>Placeholder, default value, randomise</td></tr>
+            <tr><td>Choice</td><td>Checkbox</td><td>Min/max selections, images on options</td></tr>
+            <tr><td>Choice</td><td>Multi-select</td><td>Tag-style dropdown</td></tr>
+            <tr><td>Choice</td><td>Matrix / Likert</td><td>Row labels, column labels</td></tr>
+            <tr><td>Choice</td><td>Ranking</td><td>Drag-to-reorder preference list</td></tr>
+            <tr><td>Date/Time</td><td>Date picker</td><td>Date ranges, disable specific dates</td></tr>
+            <tr><td>Date/Time</td><td>Time picker</td><td>24-hour format</td></tr>
+            <tr><td>Rating</td><td>Star rating</td><td>Configurable star count (1–10)</td></tr>
+            <tr><td>Rating</td><td>Linear scale</td><td>Min, max, step, end labels</td></tr>
+            <tr><td>Rating</td><td>NPS (0–10)</td><td>Auto-calculates NPS; Promoter/Passive/Detractor split</td></tr>
+            <tr><td>Rating</td><td>CSAT (1–5)</td><td>Auto-calculates CSAT score</td></tr>
+            <tr><td>Advanced</td><td>File upload</td><td>Allowed types, max size, allow multiple</td></tr>
+            <tr><td>Advanced</td><td>Hidden field</td><td>URL query param key mapping</td></tr>
+            <tr><td>Advanced</td><td>Calculated field</td><td>Expression using other field values</td></tr>
+            <tr><td>Advanced</td><td>reCAPTCHA</td><td>Spam and bot protection</td></tr>
+            <tr><td>Payment</td><td>Stripe payment</td><td>Amount, currency — <em>Phase 1 out of scope</em></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>1.2 Conditional Logic</h3>
+      <div class="card-grid">
+        <div class="card-sm"><h4>Jump to Page</h4><p>Skip to a specific page; branch to different Thank You pages based on answers.</p></div>
+        <div class="card-sm"><h4>Calculate a Value</h4><p>Assign a computed result to a calculated field (score, price, personalised message).</p></div>
+        <div class="card-sm"><h4>Make Required</h4><p>Dynamically enforce or release a field's required status.</p></div>
+        <div class="card-sm"><h4>Show / Hide Blocks</h4><p>Reveal or conceal any question, page, or content block.</p></div>
+        <div class="card-sm"><h4>Hide Submit Button</h4><p>Conditionally prevent form completion.</p></div>
+        <div class="card-sm"><h4>Redirect to URL</h4><p>Send the respondent to an external URL on completion.</p></div>
+      </div>
+      <p>Conditions support <strong>AND / OR</strong> matching and <strong>nested condition groups</strong>. No limit on rule count. Available free on all forms.</p>
+
+      <h3>1.3 Submission Handling and Notifications</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Detail</th></tr></thead>
+          <tbody>
+            <tr><td>Response storage</td><td>All submissions stored server-side</td></tr>
+            <tr><td>Partial submissions</td><td>Configurable; saves data on each page advance</td></tr>
+            <tr><td>Duplicate prevention</td><td>Cookie + server-side idempotency token</td></tr>
+            <tr><td>Password protection</td><td>Access gate rendered before the form</td></tr>
+            <tr><td>Data retention</td><td>Configurable retention period per form</td></tr>
+            <tr><td>Self email notification</td><td>Owner notified per submission; body uses <code>@mention</code> field inserts</td></tr>
+            <tr><td>Respondent email</td><td>Confirmation email sent to the respondent's address</td></tr>
+            <tr><td>Dynamic email routing</td><td>Calculated field sets <code>To:</code> address — routes to sales/support/billing</td></tr>
+            <tr><td>Webhook</td><td>JSON POST; optional SHA256 signing; 5-attempt retry (5m → 30m → 1h → 6h → 1d)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>1.4 Embedding Methods</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mode</th><th>Description</th><th>Delivery</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-blue">Standard</span></td><td>Form renders inline in the host page</td><td>iframe or JS snippet</td></tr>
+            <tr><td><span class="badge badge-purple">Popup</span></td><td>Floating overlay modal; triggered by click or JS API</td><td>JS snippet</td></tr>
+            <tr><td><span class="badge badge-green">Full Page</span></td><td>Form fills the entire viewport</td><td>iframe or JS snippet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════ STACK EVALUATION ══════════════════ -->
+    <section id="stack">
+      <h2 class="section-title">2. Technology Stack Evaluation</h2>
+      <p>Four candidates scored across six weighted criteria (1 = poor, 5 = excellent). Primary constraint: the form must embed in any host website via a single <code>&lt;script&gt;</code> tag.</p>
+
+      <div class="score-grid">
+        <div class="score-card">
+          <div class="score-label">Vanilla JS</div>
+          <div class="score-value">3.55</div>
+          <div class="score-sub">Candidate A</div>
+        </div>
+        <div class="score-card">
+          <div class="score-label">Alpine.js</div>
+          <div class="score-value">4.25</div>
+          <div class="score-sub">Candidate B</div>
+        </div>
+        <div class="score-card winner">
+          <div class="score-label">Vue 3 &#10003;</div>
+          <div class="score-value">4.50</div>
+          <div class="score-sub">Candidate C — Winner</div>
+        </div>
+        <div class="score-card">
+          <div class="score-label">React</div>
+          <div class="score-value">3.65</div>
+          <div class="score-sub">Candidate D</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Criterion</th><th>Weight</th><th>Vanilla JS</th><th>Alpine.js</th><th class="highlight">Vue 3</th><th>React</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Embeddability (single script tag)</td><td>25%</td><td>5</td><td>5</td><td class="highlight">5</td><td>4</td></tr>
+            <tr><td>Dependency footprint</td><td>20%</td><td>5</td><td>5</td><td class="highlight">4</td><td>3</td></tr>
+            <tr><td>Browser compatibility</td><td>15%</td><td>5</td><td>4</td><td class="highlight">4</td><td>4</td></tr>
+            <tr><td>Maintainability</td><td>15%</td><td>2</td><td>3</td><td class="highlight">5</td><td>4</td></tr>
+            <tr><td>Development speed</td><td>15%</td><td>2</td><td>4</td><td class="highlight">4</td><td>3</td></tr>
+            <tr><td>Backend submission handling</td><td>10%</td><td>4</td><td>4</td><td class="highlight">4</td><td>4</td></tr>
+            <tr><td><strong>Weighted Total</strong></td><td></td><td>3.55</td><td>4.25</td><td class="highlight"><strong>4.50</strong></td><td>3.65</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════ RECOMMENDATION ══════════════════ -->
+    <section id="recommendation">
+      <h2 class="section-title">3. Recommended Stack</h2>
+      <div class="card" style="border-left:4px solid #3182ce;">
+        <h3 style="margin-top:0; color:#2b6cb0;">Vue 3 (Composition API) + Vite + TypeScript + Tailwind CSS</h3>
+        <p style="margin-bottom:0.5rem;"><strong>Backend:</strong> Node.js (Express/Fastify) + PostgreSQL + Redis</p>
+        <p>Vue 3 achieves the highest weighted score and is the only candidate that satisfies all three critical constraints simultaneously:</p>
+        <ul>
+          <li><strong><code>defineCustomElement</code></strong> — packages the entire form as a native Web Component with Shadow DOM isolation. The host page's CSS cannot break the form; the form's CSS cannot pollute the host. Alpine.js and React do not have this as a first-class feature.</li>
+          <li><strong>Composable architecture</strong> — <code>useFormState</code>, <code>useValidation</code>, <code>useConditionalLogic</code>, and <code>useMultiStep</code> are natural, independently testable Composition API composables. This structure is not achievable cleanly with Vanilla JS or Alpine.js.</li>
+          <li><strong>Bundle size</strong> — Vue 3 runtime-only build ~22 KB gzipped. Full embed bundle estimatable under 60 KB gzipped. React's baseline alone is ~43 KB before any form field code.</li>
+          <li><strong>Vite lib mode</strong> — outputs a single IIFE file (<code>embed.iife.js</code>) with tree-shaking. No module bundler required on the host site.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ══════════════════ ARCHITECTURE ══════════════════ -->
+    <section id="architecture">
+      <h2 class="section-title">4. Architecture Plan</h2>
+
+      <div class="arch-box">Host Website
+  &lt;script src="https://forms.ajj.com/embed.js" defer&gt;&lt;/script&gt;
+  &lt;ajj-form form-id="abc123" mode="inline"&gt;&lt;/ajj-form&gt;
+        |
+        v
+Embed Runtime (Vue 3 Web Component)
+  FormWidget.vue [Shadow DOM Root]
+    |-- FormProgress.vue
+    |-- FormPage.vue --> [FieldComponent] x n  (from registry)
+    |-- FormNavigation.vue (Next / Back / Submit)
+    `-- ThankYouPage.vue
+
+  Composables:
+    useFormState | useMultiStep | useValidation
+    useConditionalLogic | useAnswerPiping | useSubmission
+        |
+        |  GET /api/forms/:id   (schema)
+        |  POST /api/submissions
+        v
+Backend API (Node.js)
+  Routes:     forms | submissions | health
+  Middleware: auth | rateLimit | csrf | sanitise | originCheck
+  Services:   formSvc | submissionSvc | email | webhook | storage
+        |
+        +---> PostgreSQL (forms + submissions)
+        +---> Redis (rate limiting)
+        +---> S3-compatible (file uploads)
+        +---> Email (SMTP / SendGrid)
+        `---> Webhooks (JSON POST + 5-attempt retry)</div>
+
+      <h3>Composable Responsibilities</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Composable</th><th>Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><code>useFormState</code></td><td>Reactive <code>Map&lt;fieldId, value&gt;</code> shared via provide/inject across all field components</td></tr>
+            <tr><td><code>useMultiStep</code></td><td>Page array management: <code>currentPageIndex</code>, <code>goNext()</code>, <code>goBack()</code>, <code>goToPage(n)</code>, progress percentage</td></tr>
+            <tr><td><code>useValidation</code></td><td>Evaluates <code>validationRules[]</code> per field on blur, page advance, and submit; returns <code>Map&lt;fieldId, errorMessage&gt;</code></td></tr>
+            <tr><td><code>useConditionalLogic</code></td><td>Evaluates all IF/THEN rules; produces hiddenBlocks, requiredOverrides, jumpTarget, calculatedValues</td></tr>
+            <tr><td><code>useAnswerPiping</code></td><td>Replaces <code>@fieldName</code> tokens in question text and Thank You page with current field values</td></tr>
+            <tr><td><code>useSubmission</code></td><td>Handles POST to <code>/api/submissions</code>; loading state, error handling, retry on network failure</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Backend Submission Pipeline</h3>
+      <ol>
+        <li>Validate <code>Origin</code> / <code>Referer</code> header against the form's authorised domains allowlist.</li>
+        <li>Verify CSRF double-submit cookie token.</li>
+        <li>Sanitise all string inputs (<code>sanitize-html</code> — strips script tags, HTML injection).</li>
+        <li>Re-validate required fields and type constraints server-side (client-side validation is not trusted).</li>
+        <li>Persist submission record to PostgreSQL.</li>
+        <li>Store uploaded files to S3-compatible bucket; record object keys.</li>
+        <li>Enqueue async email notification job.</li>
+        <li>Enqueue async webhook dispatch job (5-attempt retry schedule).</li>
+        <li>Respond <code>201 Created</code> with <code>{ submissionId }</code>.</li>
+      </ol>
+
+      <h3>Core API Endpoints</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>GET</td><td><code>/api/forms/:formId</code></td><td>Public</td><td>Fetch form JSON schema</td></tr>
+            <tr><td>POST</td><td><code>/api/submissions</code></td><td>Public</td><td>Receive and persist a form submission</td></tr>
+            <tr><td>GET</td><td><code>/api/submissions/:formId</code></td><td>JWT</td><td>List submissions for a form</td></tr>
+            <tr><td>POST</td><td><code>/api/forms</code></td><td>JWT</td><td>Create a new form</td></tr>
+            <tr><td>PUT</td><td><code>/api/forms/:formId</code></td><td>JWT</td><td>Update an existing form</td></tr>
+            <tr><td>GET</td><td><code>/health</code></td><td>Public</td><td>Health check</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─── SECURITY ───────────────────────────────────────── -->
+    <section id="security">
+      <h3>Security Considerations</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td>Transport</td><td>HTTPS-only — embed script and API served over TLS; mixed content blocked by browsers</td></tr>
+            <tr><td>Origin validation</td><td>Per-form allowlist of authorised host domains checked on every submission</td></tr>
+            <tr><td>CSRF</td><td>Double-submit cookie pattern on all submission endpoints</td></tr>
+            <tr><td>Input sanitisation</td><td><code>sanitize-html</code> server-side; parameterised SQL queries throughout; no string interpolation in SQL</td></tr>
+            <tr><td>Rate limiting</td><td>Redis-backed: 5 submissions / IP / minute / formId (sliding window)</td></tr>
+            <tr><td>CAPTCHA</td><td>Optional hCaptcha / reCAPTCHA v3 token verified server-side per form</td></tr>
+            <tr><td>Authentication</td><td>JWT bearer tokens (short-lived access + refresh) for admin management API</td></tr>
+            <tr><td>CSP compliance</td><td>No <code>eval()</code>, no unsafe <code>innerHTML</code>, no inline event handlers — works within standard Content Security Policy headers</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════ ROADMAP ══════════════════ -->
+    <section id="roadmap">
+      <h2 class="section-title">5. Implementation Roadmap</h2>
+
+      <div class="phase phase-1">
+        <div class="phase-title">Phase 1 — Foundation and Core Field Rendering</div>
+        <p style="font-size:0.875rem; color:#2d3748; margin-bottom:0.5rem;"><strong>Goal:</strong> A working embeddable form that renders fields from a JSON schema and submits data.</p>
+        <ul class="deliverables-list">
+          <li>Project scaffolding: Vite + Vue 3 + TypeScript + Tailwind; Docker Compose (API + PostgreSQL + Redis)</li>
+          <li>Web Component entry point using <code>defineCustomElement</code></li>
+          <li>10 core field components: Short Answer, Long Answer, Email, Phone, Number, Multiple Choice, Dropdown, Checkbox, Date, Time</li>
+          <li><code>useFormState</code>, <code>useValidation</code>, and <code>useMultiStep</code> composables with progress indicator</li>
+          <li>Backend: <code>GET /api/forms/:id</code>, <code>POST /api/submissions</code>, PostgreSQL schema, basic SMTP self-email</li>
+          <li>Origin validation, input sanitisation, HTTPS enforcement, CORS</li>
+          <li><code>scripts/start.sh</code> and <code>scripts/stop.sh</code></li>
+        </ul>
+      </div>
+
+      <div class="phase phase-2">
+        <div class="phase-title">Phase 2 — Conditional Logic and Advanced Fields</div>
+        <p style="font-size:0.875rem; color:#2d3748; margin-bottom:0.5rem;"><strong>Goal:</strong> The form adapts dynamically; all remaining field types available.</p>
+        <ul class="deliverables-list">
+          <li>Conditional logic engine (<code>useConditionalLogic</code>) with all six action types and AND/OR condition groups</li>
+          <li>12 advanced field components: Multi-select, Linear scale, NPS, CSAT, Star rating, Ranking, Matrix, File upload, Signature, Hidden, Calculated, CAPTCHA</li>
+          <li>Answer piping: <code>@fieldName</code> token interpolation in question text and Thank You page</li>
+          <li>Custom Thank You page and redirect on completion</li>
+          <li>S3-compatible file storage backend; webhook dispatch with 5-attempt retry queue</li>
+        </ul>
+      </div>
+
+      <div class="phase phase-3">
+        <div class="phase-title">Phase 3 — Theming, Embed Modes, and Notifications</div>
+        <p style="font-size:0.875rem; color:#2d3748; margin-bottom:0.5rem;"><strong>Goal:</strong> Forms fully branded; all three embed modes work; rich notifications fire reliably.</p>
+        <ul class="deliverables-list">
+          <li>Full theming: CSS custom properties (colour, font, logo, cover image), custom CSS injection per form</li>
+          <li>Popup embed mode: modal overlay + <code>AJJForms.open()</code> / <code>close()</code> JS API + declarative trigger</li>
+          <li>Full-page embed mode; dynamic height via postMessage</li>
+          <li>Host-page URL query parameter auto-forwarding to hidden fields; <code>prefill</code> attribute support</li>
+          <li>Respondent email notification; dynamic <code>To:</code> routing via calculated field</li>
+          <li>Optional reCAPTCHA / hCaptcha per form (server-side token verification)</li>
+        </ul>
+      </div>
+
+      <div class="phase phase-4">
+        <div class="phase-title">Phase 4 — Security Hardening, Testing, and Documentation</div>
+        <p style="font-size:0.875rem; color:#2d3748; margin-bottom:0.5rem;"><strong>Goal:</strong> Production-ready, secure, fully tested, and documented.</p>
+        <ul class="deliverables-list">
+          <li>Redis-backed rate limiting; CSRF double-submit cookie; partial submissions; duplicate prevention; password gate</li>
+          <li>Unit tests (Vitest): all composables, all field components — minimum 80% coverage</li>
+          <li>Integration tests (Supertest): all API endpoints</li>
+          <li>End-to-end tests (Playwright): inline, popup, multi-step, conditional logic, file upload</li>
+          <li>Full documentation set (Architecture, Quickstart, EmbeddingGuide, SchemaReference)</li>
+          <li>Docker Compose production deployment package</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ══════════════════ PROJECT STRUCTURE ══════════════════ -->
+    <section id="structure">
+      <h2 class="section-title">6. File and Folder Structure</h2>
+      <div class="tree">
+<span class="folder">ajj-tally/</span>
+|
++-- <span class="folder">embed/</span>                    <span class="comment"># Vue 3 embed widget (Vite library build)</span>
+|   +-- <span class="folder">src/</span>
+|       +-- <span class="file">main.ts</span>               <span class="comment"># defineCustomElement entry point</span>
+|       +-- <span class="file">FormWidget.vue</span>        <span class="comment"># Root Web Component (Shadow DOM)</span>
+|       +-- <span class="folder">components/</span>
+|       |   +-- <span class="folder">fields/</span>             <span class="comment"># One .vue per field type (22 components)</span>
+|       |   |   +-- <span class="file">FieldShortAnswer.vue</span>
+|       |   |   +-- <span class="file">FieldEmail.vue</span>
+|       |   |   +-- <span class="file">FieldMultipleChoice.vue</span>
+|       |   |   +-- <span class="file">FieldMatrix.vue</span>
+|       |   |   +-- <span class="file">FieldFileUpload.vue</span>
+|       |   |   `-- <span class="file">... (17 more)</span>
+|       |   +-- <span class="folder">layout/</span>             <span class="comment"># FormPage · FormProgress · FormNavigation · ThankYouPage</span>
+|       |   `-- <span class="folder">ui/</span>                 <span class="comment"># BaseButton · BaseInput · ErrorMessage</span>
+|       +-- <span class="folder">composables/</span>
+|       |   +-- <span class="file">useFormState.ts</span>      <span class="comment"># Reactive Map&lt;fieldId, value&gt;</span>
+|       |   +-- <span class="file">useMultiStep.ts</span>      <span class="comment"># Page navigation logic</span>
+|       |   +-- <span class="file">useValidation.ts</span>     <span class="comment"># Client-side validation engine</span>
+|       |   +-- <span class="file">useConditionalLogic.ts</span> <span class="comment"># IF/THEN rule evaluator</span>
+|       |   +-- <span class="file">useAnswerPiping.ts</span>   <span class="comment"># @mention interpolation</span>
+|       |   `-- <span class="file">useSubmission.ts</span>     <span class="comment"># POST submission + error handling</span>
+|       +-- <span class="folder">types/</span>               <span class="comment"># schema.ts · fields.ts · logic.ts</span>
+|       `-- <span class="folder">utils/</span>               <span class="comment"># fieldRegistry · interpolate · queryParams</span>
+|
++-- <span class="folder">api/</span>                      <span class="comment"># Node.js backend API</span>
+|   `-- <span class="folder">src/</span>
+|       +-- <span class="folder">routes/</span>              <span class="comment"># forms.ts · submissions.ts · health.ts</span>
+|       +-- <span class="folder">middleware/</span>          <span class="comment"># auth · rateLimit · csrf · sanitise · originCheck</span>
+|       +-- <span class="folder">services/</span>            <span class="comment"># formSvc · submissionSvc · emailSvc · webhookSvc · storageSvc</span>
+|       `-- <span class="folder">db/</span>                  <span class="comment"># client.ts · migrations/</span>
+|
++-- <span class="folder">Docs/</span>                     <span class="comment"># Architecture · Quickstart · EmbeddingGuide · ...</span>
++-- <span class="folder">scripts/</span>                  <span class="comment"># start.sh · stop.sh  (chmod +x)</span>
++-- <span class="folder">input/</span>                    <span class="comment"># Input documents (folder tracked, contents gitignored)</span>
++-- <span class="folder">output/</span>                   <span class="comment"># Timestamped outputs (folder tracked, contents gitignored)</span>
++-- <span class="file">docker-compose.yml</span>
++-- <span class="file">.env.example</span>
++-- <span class="file">.gitignore</span>
+`-- <span class="file">README.md</span></div>
+    </section>
+
+    <!-- ══════════════════ EMBEDDING SPEC ══════════════════ -->
+    <section id="embedding">
+      <h2 class="section-title">7. Embedding Interface Specification</h2>
+
+      <h3>Step 1 — Load the Script Once</h3>
+      <pre><code>&lt;!-- Add once to &lt;head&gt; or before &lt;/body&gt; --&gt;
+&lt;script src="https://forms.ajj.com/embed.js" defer&gt;&lt;/script&gt;</code></pre>
+
+      <h3>Step 2 — Choose a Render Mode</h3>
+
+      <div class="embed-example">
+        <h4>Inline Embed</h4>
+        <pre><code>&lt;ajj-form
+  form-id="abc123"
+  mode="inline"
+  dynamic-height="true"
+  hide-title="false"
+  align="center"
+  transparent-bg="false"
+&gt;&lt;/ajj-form&gt;</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>Popup — Declarative Trigger (No JavaScript Required)</h4>
+        <pre><code>&lt;button data-ajj-form="abc123" data-ajj-mode="popup"&gt;
+  Contact Us
+&lt;/button&gt;</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>Popup — JavaScript API</h4>
+        <pre><code>window.AJJForms.open('abc123');
+window.AJJForms.close('abc123');</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>Full-Page Embed</h4>
+        <pre><code>&lt;ajj-form
+  form-id="abc123"
+  mode="fullpage"
+  transparent-bg="true"
+&gt;&lt;/ajj-form&gt;</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>Pre-fill via URL Parameters (Automatic — No Config Required)</h4>
+        <pre><code>https://example.com/contact?email=alice@example.com&amp;ref=newsletter
+&lt;!-- Fields "email" and "ref" auto-populated from URL params --&gt;</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>Pre-fill via Attribute</h4>
+        <pre><code>&lt;ajj-form
+  form-id="abc123"
+  prefill='{"email": "alice@example.com", "source": "homepage"}'
+&gt;&lt;/ajj-form&gt;</code></pre>
+      </div>
+
+      <div class="embed-example">
+        <h4>JavaScript Events API</h4>
+        <pre><code>window.AJJForms.on('submit', 'abc123', function(payload) {
+  gtag('event', 'form_submit', { form_id: payload.formId });
+});
+
+window.AJJForms.on('page-change', 'abc123', function(data) {
+  console.log('Page ' + data.pageIndex + ' of ' + data.totalPages);
+});</code></pre>
+      </div>
+
+      <h3>Attribute Reference</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>form-id</code></td><td>string</td><td>—</td><td><strong>Required.</strong> Unique identifier of the form to render.</td></tr>
+            <tr><td><code>mode</code></td><td>inline | popup | fullpage</td><td>inline</td><td>Rendering mode.</td></tr>
+            <tr><td><code>dynamic-height</code></td><td>boolean</td><td>true</td><td>Auto-adjusts height to fit form content; eliminates scrollbars.</td></tr>
+            <tr><td><code>height</code></td><td>number (px)</td><td>500</td><td>Fixed pixel height when <code>dynamic-height</code> is false.</td></tr>
+            <tr><td><code>hide-title</code></td><td>boolean</td><td>false</td><td>Hides the form title at the top of the embed.</td></tr>
+            <tr><td><code>align</code></td><td>center | left</td><td>center</td><td>Horizontal alignment of form content.</td></tr>
+            <tr><td><code>transparent-bg</code></td><td>boolean</td><td>false</td><td>Removes white background; form inherits host-page background.</td></tr>
+            <tr><td><code>prefill</code></td><td>JSON string</td><td>—</td><td>Key-value pairs to pre-populate fields.</td></tr>
+            <tr><td><code>overlay-color</code></td><td>CSS colour</td><td>rgba(0,0,0,0.5)</td><td>Popup overlay colour.</td></tr>
+            <tr><td><code>auto-open</code></td><td>number (ms)</td><td>—</td><td>Auto-open popup after this delay in milliseconds.</td></tr>
+            <tr><td><code>close-on-submit</code></td><td>boolean</td><td>true</td><td>Close popup automatically on successful submission.</td></tr>
+            <tr><td><code>language</code></td><td>ISO 639-1 string</td><td>en</td><td>UI language code (e.g. <code>fr</code>, <code>de</code>, <code>es</code>).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>JavaScript Events Reference</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Event</th><th>Payload Fields</th><th>When It Fires</th></tr></thead>
+          <tbody>
+            <tr><td><code>ready</code></td><td><code>formId</code></td><td>Form schema loaded and rendered in the DOM</td></tr>
+            <tr><td><code>page-change</code></td><td><code>formId, pageIndex, totalPages</code></td><td>Respondent navigates to a new page (multi-step forms)</td></tr>
+            <tr><td><code>submit</code></td><td><code>formId, submissionId, data</code></td><td>Form submitted successfully to the backend</td></tr>
+            <tr><td><code>error</code></td><td><code>formId, message</code></td><td>A submission error occurred (network failure, server error)</td></tr>
+            <tr><td><code>close</code></td><td><code>formId</code></td><td>Popup closed without submitting</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer style="margin-top:3rem; padding-top:1.5rem; border-top:1px solid #e2e8f0; color:#718096; font-size:0.8rem; text-align:center;">
+      AJJ-Tally Technical Plan &nbsp;&middot;&nbsp; Status: Planning &nbsp;&middot;&nbsp;
+      <a href="Architecture.md" style="color:#3182ce;">Architecture</a> &nbsp;&middot;&nbsp;
+      <a href="Quickstart.md" style="color:#3182ce;">Quickstart</a> &nbsp;&middot;&nbsp;
+      <a href="EmbeddingGuide.md" style="color:#3182ce;">Embedding Guide</a> &nbsp;&middot;&nbsp;
+      <a href="ImplementationRoadmap.md" style="color:#3182ce;">Roadmap</a>
+      <br><br>
+      <span style="color:#a0aec0; font-size:0.75rem;">Made with IBM Bob</span>
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>

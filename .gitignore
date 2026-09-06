@@ -1,0 +1,43 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+embed/dist/
+api/dist/
+
+# Output files (folder is tracked; contents are not)
+output/*
+!output/.gitkeep
+
+# Input files (folder is tracked; contents are not)
+input/*
+!input/.gitkeep
+
+# Private/source folders (underscore-prefix convention)
+_*/
+
+# Binary / model files
+*.onnx
+*.onnx.data
+*.so
+*.tgz
+*.tar.gz
+*.zip
+*.dylib
+
+# Tools
+.playwright-mcp/
+
+# Project-specific exclusions
+AGENTS.md
+.bob/mcp.json
+
+# OS artefacts
+.DS_Store
+Thumbs.db
