@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stripe Payment — AJJ Sample</title>
+
+  <!--
+    Stripe.js MUST be loaded from js.stripe.com.
+    Do NOT self-host it — Stripe uses it for PCI compliance and fraud detection.
+
+    No `defer` — the inline script at the bottom runs synchronously, so Stripe
+    must be available in the global scope before that script executes.
+  -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: #f0f2f5;
+      color: #1f2328;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ── File:// protocol warning banner ───────────────────────────────────── */
+    /*
+      Stripe Elements iframes cannot mount on file:// origins.
+      This banner is shown by JS when that condition is detected.
+    */
+    #protocol-warning {
+      display: none;              /* shown by JS when location.protocol === 'file:' */
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 1.25rem;
+      padding: 1rem 1.125rem;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      color: #92400e;
+      line-height: 1.6;
+    }
+    #protocol-warning strong { display: block; margin-bottom: 0.375rem; font-size: 0.9375rem; }
+    #protocol-warning code {
+      font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+      background: #fef3c7;
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+      font-size: 0.825em;
+    }
+
+    /* ── Card container ────────────────────────────────────────────────────── */
+    .payment-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 2rem 2.25rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────────── */
+    .payment-header {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      margin-bottom: 1.75rem;
+    }
+    .lock-icon { width: 1.125rem; height: 1.125rem; color: #57606a; flex-shrink: 0; }
+    .payment-header h1 { font-size: 1.125rem; font-weight: 700; }
+    .amount-badge { margin-left: auto; font-size: 0.9375rem; font-weight: 700; }
+
+    /* ── Form fields ─────────────────────────────────────────────────────────── */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      margin-bottom: 1.125rem;
+    }
+    label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #57606a;
+      letter-spacing: 0.01em;
+    }
+
+    /* Cardholder name — native text input */
+    input[type="text"] {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: #1f2328;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type="text"]:focus {
+      border-color: #0066ff;
+      box-shadow: 0 0 0 3px rgba(0,102,255,0.12);
+    }
+    input[type="text"]::placeholder { color: #9ea6b0; }
+
+    /*
+      Stripe CardElement wrapper.
+      The CardElement injects a single iframe that draws its OWN border, padding,
+      and input styles (controlled via the `style` option passed to elements.create).
+      The outer wrapper must NOT add its own border/padding — that would double up.
+      It only needs a min-height so the iframe has guaranteed room to render, and
+      overflow:hidden to clip the iframe border-radius correctly.
+    */
+    #card-element {
+      min-height: 2.75rem;
+      overflow: hidden;
+      border-radius: 6px;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────────────── */
+    .divider { height: 1px; background: #e5e7eb; margin: 1.25rem 0; }
+
+    /* ── Submit button ───────────────────────────────────────────────────────── */
+    #pay-button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: #ffffff;
+      background: #0066ff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    #pay-button:hover:not(:disabled) { background: #0052cc; }
+    #pay-button:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    /* Spinner inside the button during processing */
+    .btn-spinner {
+      display: none;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    #pay-button.is-loading .btn-spinner { display: block; }
+    #pay-button.is-loading .btn-label  { opacity: 0.85; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result message ──────────────────────────────────────────────────────── */
+    #result {
+      margin-top: 1rem;
+      padding: 0.625rem 0.875rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      white-space: pre-wrap;  /* preserves newlines in the success message */
+      display: none;
+    }
+    #result.is-error   { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    #result.is-success { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+    /* ── Test card hint ──────────────────────────────────────────────────────── */
+    .test-hint {
+      margin-top: 1.5rem;
+      padding: 0.75rem 1rem;
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      color: #57606a;
+      line-height: 1.6;
+    }
+    .test-hint strong { color: #1f2328; }
+    .test-hint code {
+      font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+      background: #e5e7eb;
+      padding: 0.1em 0.3em;
+      border-radius: 3px;
+      font-size: 0.8em;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────────────── */
+    .footer-note {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: #9ea6b0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+    }
+    .footer-note svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+
+    /* ── Responsive ──────────────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .payment-card { padding: 1.5rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!--
+    ════════════════════════════════════════════════════════════════════════════
+    IMPORTANT — HOW TO OPEN THIS FILE
+    ════════════════════════════════════════════════════════════════════════════
+    Stripe.js blocks iframe mounting on file:// URLs (browser security policy).
+    You MUST serve this file over HTTP, even for local development.
+
+    Quickest options (run from this folder):
+      npx serve .                  → http://localhost:3000
+      python3 -m http.server 8080  → http://localhost:8080
+      npx http-server -p 8080      → http://localhost:8080
+
+    Then open http://localhost:PORT/index.html in your browser.
+    ════════════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- Protocol warning — shown by JS when opened as file:// -->
+  <div id="protocol-warning">
+    <strong>⚠ Open this file over HTTP, not file://</strong>
+    Stripe.js cannot mount secure card inputs on a <code>file://</code> URL.<br><br>
+    Run one of these commands from the <code>samples/</code> folder, then open the printed URL:
+    <br><br>
+    <code>npx serve .</code><br>
+    <code>python3 -m http.server 8080</code>
+  </div>
+
+  <div class="payment-card">
+
+    <!-- Header: title + amount -->
+    <div class="payment-header">
+      <svg class="lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+           fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd"
+          d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0
+             002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z"
+          clip-rule="evenodd"/>
+      </svg>
+      <h1>Secure checkout</h1>
+      <span class="amount-badge">$25.00</span>
+    </div>
+
+    <form id="payment-form" novalidate>
+
+      <!-- 1. Cardholder name — plain HTML input, not a Stripe iframe -->
+      <div class="form-group">
+        <label for="cardholder-name">Cardholder name</label>
+        <input
+          id="cardholder-name"
+          type="text"
+          placeholder="Jane Smith"
+          autocomplete="cc-name"
+          required
+        />
+      </div>
+
+      <!--
+        2. Card number, expiry, and CVC — all in one Stripe CardElement iframe.
+           Using a single CardElement (vs three split Elements) is simpler and
+           avoids the height/sizing issues that affect split Elements in local demos.
+           The CardElement mounts into the #card-element div below.
+      -->
+      <div class="form-group">
+        <label>Card details</label>
+        <!-- Stripe mounts its secure iframe here. Never add inline styles that
+             set height:0 or overflow:hidden on this div — the iframe needs room. -->
+        <div id="card-element"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 3. Submit button — shows a spinner while the Stripe API call is in flight -->
+      <button id="pay-button" type="submit">
+        <span class="btn-spinner" aria-hidden="true"></span>
+        <span class="btn-label">Pay $25.00</span>
+      </button>
+
+      <!-- 4. Success / error message rendered here after submit -->
+      <div id="result" role="alert" aria-live="assertive"></div>
+
+    </form>
+
+    <!-- Test card reference — visible at all times so developers can copy numbers -->
+    <div class="test-hint">
+      <strong>Test cards (Stripe test mode only)</strong><br>
+      Success:&nbsp;&nbsp;&nbsp;<code>4242 4242 4242 4242</code><br>
+      3D Secure:&nbsp;<code>4000 0025 0000 3155</code><br>
+      Decline:&nbsp;&nbsp;&nbsp;<code>4000 0000 0000 9995</code><br>
+      Expiry: any future date &nbsp;·&nbsp; CVC: any 3 digits
+    </div>
+
+  </div>
+
+  <p class="footer-note">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd"
+        d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0
+           002-2v-6a2 2 0 00-2-2h-.5V5.5A3 3 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z"
+        clip-rule="evenodd"/>
+    </svg>
+    Card data goes directly to Stripe — it never touches this server.
+  </p>
+
+  <script>
+    // =========================================================================
+    //  AJJ-Tally — Stripe front-end payment sample
+    //  File: samples/index.html
+    //
+    //  HOW IT WORKS
+    //  ────────────
+    //  1. Initialize Stripe with a publishable key.
+    //  2. Mount a CardElement into #card-element (one iframe, all card fields).
+    //  3. On submit, call stripe.createPaymentMethod() — card data goes to
+    //     Stripe's servers; this page only receives an opaque token (pm_…).
+    //  4. In a real integration, POST that token to your backend endpoint:
+    //     POST /api/payments/create-intent  (see Docs/stripe-integration-en.md § 6)
+    //
+    //  REQUIREMENT: Must be served over http:// or https://, not file://
+    //  ────────────────────────────────────────────────────────────────
+    //  Stripe.js blocks iframe mounting on file:// for security reasons.
+    //  Use `npx serve .` or `python3 -m http.server 8080` from samples/.
+    // =========================================================================
+
+    // ── Protocol check ────────────────────────────────────────────────────────
+    //  Show the warning banner and stop if opened as file://.
+    if (window.location.protocol === 'file:') {
+      document.getElementById('protocol-warning').style.display = 'block';
+      document.getElementById('pay-button').disabled = true;
+      document.getElementById('result').className    = 'is-error';
+      document.getElementById('result').textContent  =
+        'Stripe cannot mount here. Serve over HTTP — see the yellow banner above.';
+      // Do not initialise Stripe — throw stops execution.
+      throw new Error('Stripe requires HTTP. Open via: npx serve . (from samples/)');
+    }
+
+    // ── Step 1: Initialize Stripe ─────────────────────────────────────────────
+    //
+    // ► REPLACE the key below with your actual Stripe publishable test key.
+    //   Get it from: https://dashboard.stripe.com/apikeys
+    //   It starts with pk_test_… (test) or pk_live_… (production).
+    //   This key is SAFE to put in browser code — it cannot create charges.
+    //   NEVER use your secret key (sk_…) here.
+    //
+    const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY'; // <-- replace this
+
+    if (STRIPE_PUBLISHABLE_KEY === 'pk_test_YOUR_PUBLISHABLE_KEY') {
+      document.getElementById('result').className   = 'is-error';
+      document.getElementById('result').textContent =
+        'Setup required: replace STRIPE_PUBLISHABLE_KEY in samples/index.html ' +
+        'with your real pk_test_… key from https://dashboard.stripe.com/apikeys';
+      document.getElementById('pay-button').disabled = true;
+      // Stop — calling Stripe() with a placeholder key throws and prevents mounting.
+      throw new Error('Replace STRIPE_PUBLISHABLE_KEY before using this demo.');
+    }
+
+    // Create the Stripe instance.
+    const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+
+    // ── Step 2: Mount the CardElement ─────────────────────────────────────────
+    //
+    // stripe.elements() creates a factory.  We create one 'card' Element which
+    // combines card number, expiry, and CVC in a single, self-sizing iframe.
+    // This avoids the per-iframe height/sizing issues of the split-element approach.
+    //
+    // The `style` object customises the text rendered INSIDE the iframe.
+    // It does NOT affect the iframe container itself — that is styled by our CSS.
+    const elements = stripe.elements();
+
+    const cardElement = elements.create('card', {
+      hidePostalCode: true,   // omit the ZIP field — not needed for this demo
+      style: {
+        base: {
+          // Match the native cardholder-name input above.
+          color:           '#1f2328',
+          fontFamily:      'Inter, -apple-system, "Segoe UI", system-ui, sans-serif',
+          fontSize:        '15px',
+          fontSmoothing:   'antialiased',
+          lineHeight:      '1.5',
+          '::placeholder': { color: '#9ea6b0' },
+          iconColor:       '#57606a',
+        },
+        invalid: {
+          color:     '#ef4444',
+          iconColor: '#ef4444',
+        },
+      },
+    });
+
+    // Mount the iframe into the #card-element div.
+    // Stripe replaces the div's content with a full-width iframe.
+    cardElement.mount('#card-element');
+
+    // ── Step 3: Real-time validation feedback ─────────────────────────────────
+    //
+    // The CardElement fires a 'change' event whenever the user types.
+    // We use it to surface inline validation errors before the form is submitted.
+    const result   = document.getElementById('result');
+    const payButton = document.getElementById('pay-button');
+
+    cardElement.on('change', (event) => {
+      if (event.error) {
+        result.className   = 'is-error';
+        result.textContent = event.error.message;
+      } else {
+        result.className   = '';
+        result.textContent = '';
+      }
+    });
+
+    // ── Step 4: Submit handler ────────────────────────────────────────────────
+
+    const form = document.getElementById('payment-form');
+
+    function setLoading(on) {
+      payButton.disabled = on;
+      payButton.classList.toggle('is-loading', on);
+    }
+
+    function showError(msg) {
+      result.className   = 'is-error';
+      result.textContent = msg;
+    }
+
+    function showSuccess(msg) {
+      result.className   = 'is-success';
+      result.textContent = msg;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();   // prevent native browser form POST
+
+      // Validate the cardholder name (native input — not inside the Stripe iframe)
+      const nameEl = document.getElementById('cardholder-name');
+      const name   = nameEl.value.trim();
+      if (!name) {
+        nameEl.focus();
+        showError('Please enter the cardholder name.');
+        return;
+      }
+
+      setLoading(true);
+
+      // ── Tokenize ────────────────────────────────────────────────────────────
+      //
+      // stripe.createPaymentMethod() sends card data directly to Stripe over TLS.
+      // The page receives only a PaymentMethod ID (pm_…) — no raw card data.
+      //
+      // We pass `cardElement` as the card source.  Stripe reads the number,
+      // expiry, and CVC from the single mounted iframe automatically.
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: { name },
+      });
+
+      setLoading(false);
+
+      if (error) {
+        // Stripe provides a ready-to-display user-facing message.
+        showError(error.message);
+        return;
+      }
+
+      // ── Tokenization succeeded ───────────────────────────────────────────────
+      //
+      // paymentMethod.id looks like "pm_1PqX2aLkdIwHu7ix3J4K5mNp"
+      //
+      // ► IN A REAL INTEGRATION — POST this ID to your backend:
+      //
+      //   const res = await fetch('/api/payments/create-intent', {
+      //     method:  'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body:    JSON.stringify({
+      //       paymentMethodId: paymentMethod.id,
+      //       amount:   2500,   // cents → $25.00
+      //       currency: 'usd',
+      //     }),
+      //   });
+      //   const { clientSecret } = await res.json();
+      //
+      //   const { error: confirmErr } = await stripe.confirmCardPayment(clientSecret);
+      //   if (confirmErr) { showError(confirmErr.message); return; }
+      //   showSuccess('Payment complete!');
+      //
+      // See Docs/stripe-integration-en.md § 5–6 for the full composable + Express route.
+      //
+      // This demo stops here and just displays the token.
+
+      console.log('[AJJ Sample] PaymentMethod:', paymentMethod.id);
+      console.log('[AJJ Sample] Brand:',  paymentMethod.card.brand);
+      console.log('[AJJ Sample] Last 4:', paymentMethod.card.last4);
+
+      showSuccess(
+        '✓ Card tokenised successfully.\n\n' +
+        'Token:  ' + paymentMethod.id + '\n' +
+        'Card:   ' + paymentMethod.card.brand.toUpperCase() +
+                     ' ending in ' + paymentMethod.card.last4 + '\n\n' +
+        'Next step: POST this token to POST /api/payments/create-intent\n' +
+        '(see Docs/stripe-integration-en.md § 6)'
+      );
+
+      // Lock the form — prevent re-submission after a successful tokenization.
+      payButton.disabled = true;
+      nameEl.disabled    = true;
+      cardElement.update({ disabled: true });
+    });
+  </script>
+
+</body>
+</html>
