@@ -41,3 +41,6 @@ AGENTS.md
 # OS artefacts
 .DS_Store
 Thumbs.db
+
+# Generated config — contains browser-safe keys that should come from .env, not be committed
+samples/config.js
