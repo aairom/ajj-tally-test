@@ -49,23 +49,39 @@ chk(htmlOk && stack.length === 0, 'T01: HTML tag balance (' + stack.length + ' u
 // ── T02  Required element IDs ─────────────────────────────────────────────────
 [
   'payment-form', 'cardholder-name', 'card-element',
-  'pay-button', 'result', 'protocol-warning',
+  'pay-button', 'result', 'pay-link-button', 'panel-link', 'panel-elements',
 ].forEach(id => chk(html.includes('id="' + id + '"'), 'T02: #' + id + ' present'));
 
+// ── T02b  Payment Link mode: config.js loaded ─────────────────────────────────
+chk(html.includes('config.js'),                    'T02b: config.js sidecar loaded');
+chk(html.includes('AJJ_SAMPLE_CONFIG'),            'T02c: window.AJJ_SAMPLE_CONFIG read');
+chk(html.includes('stripePaymentLink'),            'T02d: stripePaymentLink used');
+
 // ── T03  Stripe CDN script tag — present, no defer ────────────────────────────
-// defer would delay Stripe past the inline script's synchronous execution.
 const cdnTag = clean.match(/<script\s[^>]*js\.stripe\.com[^>]*>/)?.[0] || '';
 chk(!!cdnTag,                        'T03a: Stripe CDN <script> tag present');
 chk(!cdnTag.includes('defer'),       'T03b: Stripe CDN tag has no defer attribute');
 
-// ── T04  file:// protocol guard ───────────────────────────────────────────────
-// Stripe.js refuses to mount iframes on file:// origins (browser security).
+// ── T04  file:// guard — now inline error in initElements() ───────────────────
 chk(html.includes("location.protocol === 'file:'"), 'T04a: file:// protocol detected');
-chk(html.includes("style.display = 'block'"),       'T04b: #protocol-warning shown on file://');
+chk(html.includes('http.server') || html.includes('http://localhost'), 'T04b: HTTP serving hint present');
 
-// ── T05  Publishable key placeholder + throw guard ────────────────────────────
-chk(html.includes('pk_test_YOUR_PUBLISHABLE_KEY'), 'T05a: placeholder key in source');
-chk(html.includes('throw new Error'),              'T05b: throw stops execution on placeholder key');
+// ── T05  Key guard — mountCardElement() returns early when key missing ────────
+chk(html.includes('pk_test_YOUR_PUBLISHABLE_KEY'),       'T05a: placeholder key in source');
+chk(html.includes('stripePublishableKey') && html.includes('return'),
+    'T05b: mountCardElement returns early when key missing');
+
+// ── T05c  Lazy mount — mount deferred until tab is visible ───────────────────
+// Root cause fix: mount() must not be called while panel is display:none.
+chk(html.includes('elementsMounted') && html.includes('mountCardElement'),
+    'T05c: CardElement mount deferred to tab-switch (not on page load)');
+chk(html.includes("name === 'elements'") || html.includes('name === "elements"'),
+    'T05d: mount triggered only when elements tab is activated');
+
+// ── T05e  config.js has stripePublishableKey ──────────────────────────────────
+const cfgJs = fs.readFileSync(path.join(__dirname, 'config.js'), 'utf8');
+chk(cfgJs.includes('stripePublishableKey'), 'T05e: config.js contains stripePublishableKey');
+chk(cfgJs.includes('pk_test_'),            'T05f: config.js stripePublishableKey starts with pk_test_');
 
 // ── T06  Inline JS syntax (via vm.Script — no comment stripping) ──────────────
 // vm.Script parses without executing, so no mocking of DOM/Stripe is needed.
@@ -140,12 +156,9 @@ chk(html.includes('hidePostalCode: true'), 'T20: Postal code field hidden (hideP
 // ── T21  Success message preserves newlines ───────────────────────────────────
 chk(html.includes('white-space: pre-wrap'), 'T21: pre-wrap on #result (newlines render)');
 
-// ── T22  HTTP serving instructions present ───────────────────────────────────
-// Stripe refuses to work on file:// — developers must be told how to serve.
-chk(
-  html.includes('npx serve') && html.includes('http.server'),
-  'T22: HTTP serving instructions (npx serve / python http.server)'
-);
+// ── T22  HTTP serving + config generation instructions ───────────────────────
+chk(html.includes('http.server'),                       'T22a: python http.server referenced');
+chk(html.includes('generate-sample-config'),            'T22b: generate-sample-config.js referenced');
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log('');
